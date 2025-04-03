@@ -1,6 +1,6 @@
 {
-  "name": "prettyprint",
-  "displayName": "PrettyPrint",
+  "name": "prettyprintcode",
+  "displayName": "Pretty Print",
   "publisher": "ViktorLinden",
   "repository": {
     "type": "git",
