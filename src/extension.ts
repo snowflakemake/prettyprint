@@ -2,10 +2,13 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import MarkdownIt from "markdown-it";
+import * as cheerio from "cheerio";
 import katex from "markdown-it-katex";
+import prism from "markdown-it-prism";
 
 const md = MarkdownIt();
 md.use(katex);
+md.use(prism, { plugins: ["line-numbers"] });
 
 export function activate(context: vscode.ExtensionContext) {
   let command = vscode.commands.registerCommand(
@@ -79,39 +82,86 @@ export function activate(context: vscode.ExtensionContext) {
       // Step 4: Convert each Markdown file to HTML
       // Step 2: Initialize the HTML template with basic styles and structure
       let combinedHtmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Markdown Files</title>
-  <style>
-    body {
-        font-size: 16px;
-        font-family: monospace;
-        line-height: 1.6;
-    }
-    code {
-        font-size: 16px;
-    }
-    pre {
-        font-size: 16px;
-        border: 1px solidrgba(160, 160, 160, 0.98);
-        border-radius: 4px;
-        padding: 6px 8px;
-        background-color: #f4f4f4;
-    }
-    .page-break {
-        page-break-before: always;
-        break-before: page;
-    }
-    .katex-html{
-        display: none;
-    }
-  </style>
-</head>
-<body>
-`;
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Markdown Files</title>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+
+      <script>
+        // Ensure Prism is activated after the page load
+        document.addEventListener("DOMContentLoaded", function() {
+      Prism.highlightAll(); // This triggers the highlighting for all code blocks
+        window.onload = function() {
+          window.print(); // Automatically triggers the print dialog
+        }
+        });
+      </script>
+      <style>
+        body {
+          font-size: 16px;
+          font-family: Helvetica, sans-serif;
+          line-height: 1.6;
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+        .page-break {
+          page-break-before: always;
+          break-before: page;
+        }
+        .katex-html {
+          display: none;
+        }
+        pre[class*="language-" ],
+        :not(pre)>code[class*=language-],
+        code[class*="language-"] {
+            white-space: pre-wrap;
+            overflow: auto;
+            word-break: break-word;
+        }
+        .line-numbers-container {
+          display: flex;
+          align-items: flex-start;
+          margin: -10px 0px -30px 0px;
+        }
+
+        /* Line number styles */
+        .line-numbers-rows {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          margin-right: 10px; /* Space between numbers and code */
+          font-family: monospace;
+          color: #999;
+          user-select: none;
+          margin-right: 1em;
+          white-space: nowrap;
+          border-right: #bbb 1px solid;
+        }
+
+        /* Each line number */
+        .line-number {
+          display: block;
+          padding-right: 0.8em;
+          text-align: right;
+        }
+      </style>
+    </head>
+    <body>
+    `;
 
       // Step 3: Process each markdown file
       for (const file of mdFiles) {
@@ -132,6 +182,9 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Step 4: Close the HTML structure
       combinedHtmlContent += `</body></html>`;
+      combinedHtmlContent =
+        addManualLineNumbersToCodeBlocks(combinedHtmlContent);
+
       const outputPath = path.resolve(printFolderPath, "combined_output.html");
 
       // Step 5: Write the combined HTML to the output file
@@ -143,6 +196,19 @@ export function activate(context: vscode.ExtensionContext) {
       } catch (error) {
         vscode.window.showErrorMessage(
           `Failed to write combined HTML: ${error}`
+        );
+      }
+
+      // Step 6: Open the combined HTML file in the default web browser
+      try {
+        const open = await import("open");
+        open.default(outputPath, { wait: false });
+        vscode.window.showInformationMessage(
+          `Opening combined HTML in browser: ${outputPath}`
+        );
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to open combined HTML in browser: ${error}`
         );
       }
 
@@ -192,40 +258,61 @@ function getAllCodeFiles(dir: string): string[] {
 
 // Helper: Check if a file is a source code file (not markdown)
 function isCodeFile(file: string): boolean {
-  const codeExtensions = [".js", ".ts", ".cpp", ".py", ".java", ".go", ".c"];
+  const codeExtensions = [
+    ".js",
+    ".ts",
+    ".cpp",
+    ".py",
+    ".java",
+    ".go",
+    ".c",
+    ".sh",
+    ".rs",
+  ];
   return codeExtensions.includes(path.extname(file));
 }
 
 // Helper: Convert code file content to markdown with code block and line numbers
-function convertCodeToMarkdown(filePath: string): string {
+function convertCodeToMarkdown(filePath: string) {
   const codeContent = fs.readFileSync(filePath, "utf-8");
   const language = path.extname(filePath).slice(1); // e.g., "js", "ts", "cpp"
 
-  // Extract the full file name with extension to use as the title
-  const fileNameWithExtension = path.basename(filePath); // This includes the extension
+  return `\n**${
+    path.basename(path.dirname(filePath)) + path.sep + path.basename(filePath)
+  }**\n\`\`\`${language}\n${codeContent}\n\`\`\``;
+}
 
-  // Get the parent directory name
-  const parentDirectory = path.basename(path.dirname(filePath)); // e.g., "src", "lib"
+function addManualLineNumbersToCodeBlocks(html: string): string {
+  // Load the HTML content into cheerio
+  const $ = cheerio.load(html);
 
-  // Create a title for the markdown file (you can customize this title)
-  const title = `_${parentDirectory}/${fileNameWithExtension}_\n`;
+  // Select all <pre> elements that have a class starting with "language-"
+  $("pre[class*='language-']").each((index, element) => {
+    // Get the code inside the <pre> element
+    const code = $(element).text();
 
-  // Split the code into lines
-  const codeLines = codeContent.split("\n");
+    // Split the code into lines
+    const lines = code.split("\n");
 
-  // Calculate the maximum number of digits needed for line numbers
-  const maxLineNumberLength = String(codeLines.length).length;
+    // Create the line number container (to be positioned next to the code)
+    const lineNumbersHtml = lines
+      .map((_, i) => {
+        return `<span class="line-number">${i + 1}</span>`; // Each <span> will represent a line number
+      })
+      .join("\n");
 
-  // Add line numbers to each line with consistent width
-  const codeWithLineNumbers = codeLines
-    .map((line, index) => {
-      const lineNumber = (index + 1)
-        .toString()
-        .padStart(maxLineNumberLength, " ");
-      return `${lineNumber}: ${line}`;
-    })
-    .join("\n");
+    // Create the HTML structure for line numbers and code, adding a wrapper for the code itself
+    const lineNumberedCode = `
+      <div class="line-numbers-container">
+        <div class="line-numbers-rows">${lineNumbersHtml}</div>
+        <code>${lines.join("\n")}</code>
+      </div>
+    `;
 
-  // Wrap the code in a Markdown code block
-  return `${title}\n\`\`\`${language}\n${codeWithLineNumbers}\n\`\`\``;
+    // Set the new HTML inside the <pre> element, adding the 'line-numbers' class
+    $(element).addClass("line-numbers").html(lineNumberedCode);
+  });
+
+  // Return the modified HTML as a string
+  return $.html();
 }
