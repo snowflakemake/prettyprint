@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Step 2: Get all code files recursively
       const codeFiles = getAllCodeFiles(folderPath);
-      const mdFiles = getAllMarkdownFiles(folderPath);
+      let mdFiles = getAllMarkdownFiles(folderPath);
 
       if (codeFiles.length === 0 && mdFiles.length === 0) {
         vscode.window.showWarningMessage("No code or markdown files found.");
@@ -57,6 +57,22 @@ export function activate(context: vscode.ExtensionContext) {
       if (!fs.existsSync(printFolderPath)) {
         fs.mkdirSync(printFolderPath);
       }
+
+      // Copy existing .md files to the print directory
+      mdFiles = mdFiles.map(file => {
+        try{
+          let mdFile = fs.readFileSync(file, "utf-8");
+          const newPath = path.resolve(printFolderPath, path.basename(file));
+          let content = `\n**${path.basename(path.dirname(file)) + path.sep + path.basename(file)}**\n` + mdFile;
+          fs.writeFileSync(newPath, content);
+          return newPath;
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to copy ${file} into printing direcotry.`
+          );
+          return file;
+        }
+      });
 
       // Step 3: Convert each code file to markdown
       for (const file of codeFiles) {
@@ -86,7 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
     <!DOCTYPE html>
     <html lang="en">
     <head>
-      <meta charset="UTF-8">
+      <meta charset="UTF-16">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Markdown Files</title>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
@@ -228,7 +244,7 @@ function getAllMarkdownFiles(dir: string): string[] {
     const fullPath = path.resolve(dir, file);
     const stat = fs.statSync(fullPath);
 
-    if (stat && stat.isDirectory()) {
+    if (stat && stat.isDirectory() && path.basename(fullPath) !== 'print') {
       results = results.concat(getAllMarkdownFiles(fullPath));
     } else if (file.endsWith(".md")) {
       results.push(fullPath);
