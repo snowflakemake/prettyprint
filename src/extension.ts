@@ -61,7 +61,8 @@ export function activate(context: vscode.ExtensionContext) {
       // Step 3: Convert each code file to markdown
       for (const file of codeFiles) {
         try {
-          const markdownContent = convertCodeToMarkdown(file);
+          let markdownContent = convertCodeToMarkdown(file);
+          markdownContent = addLineBreaksToLongLines(markdownContent);
           const markdownFileName =
             path.basename(file, path.extname(file)) + ".md";
           const markdownFilePath = path.resolve(
@@ -315,4 +316,50 @@ function addManualLineNumbersToCodeBlocks(html: string): string {
 
   // Return the modified HTML as a string
   return $.html();
+}
+
+function addLineBreaksToLongLines(
+  codeContent: string,
+  maxLineLength = 65
+): string {
+  // Split code into lines
+  const lines = codeContent.split("\n");
+
+  // Iterate through each line and check if it exceeds the max length
+  const processedLines = lines.map((line) => {
+    if (line.length > maxLineLength) {
+      const chunks = [];
+      let i = 0;
+
+      // Loop until the whole line is processed
+      while (i < line.length) {
+        // Check the last whitespace within the maxLineLength range
+        let splitPoint = line.lastIndexOf(" ", i + maxLineLength);
+
+        // If no whitespace is found, split at maxLineLength
+        if (splitPoint === -1 || splitPoint <= i) {
+          splitPoint = i + maxLineLength;
+        }
+
+        // Push the chunk into the array
+        chunks.push(line.slice(i, splitPoint).trim());
+
+        // Update i to the new split point
+        i = splitPoint;
+
+        // Stop if the remaining portion is smaller than the maxLineLength
+        if (line.length - i <= maxLineLength) {
+          chunks.push(line.slice(i).trim());
+          break;
+        }
+      }
+
+      // Join the chunks with line breaks and return
+      return chunks.join("\n");
+    }
+    return line;
+  });
+
+  // Join the processed lines back into a single string
+  return processedLines.join("\n");
 }
