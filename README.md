@@ -1,71 +1,78 @@
-# prettyprint README
+# Pretty Print VS Code Extension
 
-This is the README for your extension "prettyprint". After writing up a brief description, we recommend including the following sections.
+This is a Visual Studio Code extension that helps users process code and Markdown files in a selected folder by converting them into a printable format. The extension:
+
+1. **Converts code files to Markdown**: Any code file (e.g., JavaScript, Python, C++, etc.) in the selected folder is converted to a Markdown file with syntax highlighting and line numbers.
+2. **Converts Markdown files to HTML**: Markdown files are then converted to HTML, combining them into one file.
+3. **Prepares a Printable HTML**: It generates an HTML file that can be printed directly, with styled code blocks, line numbers, and integrated with the Katex library for rendering LaTeX.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Supports multiple programming languages**: JavaScript, TypeScript, Python, C++, Java, Go, C, Rust, and more.
+- **Line Numbers in Code**: Code blocks are automatically numbered for better readability when printed.
+- **LaTeX Support**: Uses Katex to render LaTeX expressions in Markdown.
+- **Print-Friendly HTML**: Converts Markdown to HTML with an automatic print trigger, allowing users to print the document directly from their browser.
 
-For example if there is an image subfolder under your extension project workspace:
+## Installation
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Clone the repository:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+   ```bash
+   git clone https://github.com/your-username/pretty-print-vscode-extension.git
+   cd pretty-print-vscode-extension
+   ```
 
-## Requirements
+2. Install dependencies:
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+   ```bash
+   npm install
+   ```
 
-## Extension Settings
+3. Open the extension in VS Code and press `F5` to launch the extension in a new window.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## Usage
 
-For example:
+1. **Activate the Extension**: Open the Command Palette (`Ctrl+Shift+P`) and type `Pretty Print`. Choose the `Pretty Print` command to activate it.
+2. **Select Folder**: You'll be prompted to select a folder containing code and Markdown files. The extension will process all code and Markdown files in the folder.
 
-This extension contributes the following settings:
+3. **Markdown Conversion**: The extension will convert code files to Markdown and place them in a new folder named `print` inside the selected folder.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+4. **Generate HTML**: After converting the files to Markdown, the extension combines them into a single HTML file, which is saved in the same `print` folder.
 
-## Known Issues
+5. **Open & Print**: The HTML file will automatically open in your default web browser, where you can print the document.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## Key Functions
 
-## Release Notes
+- **convertCodeToMarkdown**: Converts code files to Markdown with syntax highlighting and formatted code blocks.
+- **getAllCodeFiles**: Recursively retrieves all code files (with extensions like `.js`, `.ts`, `.cpp`, etc.) in a selected directory.
+- **getAllMarkdownFiles**: Recursively retrieves all Markdown files (`.md`) in the selected directory.
+- **addManualLineNumbersToCodeBlocks**: Adds line numbers to code blocks in the HTML output to improve readability.
+- **Pretty Print HTML Output**: Combines converted Markdown content into an HTML file ready for printing.
 
-Users appreciate release notes as you update your extension.
+## Supported Languages
 
-### 1.0.0
+The extension supports the following languages for code syntax highlighting:
 
-Initial release of ...
+- JavaScript (`.js`)
+- TypeScript (`.ts`)
+- Python (`.py`)
+- C++ (`.cpp`)
+- Java (`.java`)
+- Go (`.go`)
+- C (`.c`)
+- Rust (`.rs`)
+- Shell scripts (`.sh`)
 
-### 1.0.1
+## Dependencies
 
-Fixed issue #.
+This extension uses the following libraries:
 
-### 1.1.0
+- **`markdown-it`**: A markdown parser that renders Markdown content into HTML.
+- **`markdown-it-katex`**: A plugin for rendering LaTeX expressions in Markdown.
+- **`markdown-it-prism`**: A plugin for syntax highlighting in Markdown using Prism.
+- **`cheerio`**: A library for manipulating HTML.
+- **`open`**: Opens the generated HTML file in the default web browser.
 
-Added features X, Y, and Z.
+## Contribution
 
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Contributions are welcome! Feel free to submit issues, pull requests, or suggestions to improve the extension.
