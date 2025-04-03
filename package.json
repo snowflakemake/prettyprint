@@ -1,7 +1,7 @@
 {
   "name": "prettyprint",
   "displayName": "PrettyPrint",
-  "publisher": "Viktor Lindén",
+  "publisher": "ViktorLinden",
   "repository": {
     "type": "git",
     "url": "https://github.com/snowflakemake/prettyprint"
