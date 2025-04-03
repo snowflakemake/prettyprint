@@ -6,6 +6,7 @@
     "type": "git",
     "url": "https://github.com/snowflakemake/prettyprint"
   },
+  "license": "MIT",
   "description": "Combining vscode-print and markdown-to-pdf to print in the most efficient and pretty way",
   "version": "0.0.1",
   "engines": {
