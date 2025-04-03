@@ -1,6 +1,11 @@
 {
   "name": "prettyprint",
   "displayName": "PrettyPrint",
+  "publisher": "Viktor Lindén",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/snowflakemake/prettyprint"
+  },
   "description": "Combining vscode-print and markdown-to-pdf to print in the most efficient and pretty way",
   "version": "0.0.1",
   "engines": {
