@@ -23,7 +23,20 @@
         "command": "extension.prettyPrint",
         "title": "Pretty Print"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "PrettyPrint",
+      "properties": {
+        "myExtension.ignore": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["**/.git"],
+          "description": "Glob patterns for files and folders to ignore during print"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

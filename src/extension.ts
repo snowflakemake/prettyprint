@@ -5,10 +5,14 @@ import MarkdownIt from "markdown-it";
 import * as cheerio from "cheerio";
 import katex from "markdown-it-katex";
 import prism from "markdown-it-prism";
+import { minimatch } from "minimatch";
 
 const md = MarkdownIt();
 md.use(katex);
 md.use(prism, { plugins: ["line-numbers"] });
+
+const config = vscode.workspace.getConfiguration("myExtension");
+const ignorePatterns = config.get<string[]>("ignore") || [];
 
 export function activate(context: vscode.ExtensionContext) {
   let command = vscode.commands.registerCommand(
@@ -59,11 +63,14 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       // Copy existing .md files to the print directory
-      mdFiles = mdFiles.map(file => {
-        try{
+      mdFiles = mdFiles.map((file) => {
+        try {
           let mdFile = fs.readFileSync(file, "utf-8");
           const newPath = path.resolve(printFolderPath, path.basename(file));
-          let content = `\n**${path.basename(path.dirname(file)) + path.sep + path.basename(file)}**\n` + mdFile;
+          let content =
+            `\n**${
+              path.basename(path.dirname(file)) + path.sep + path.basename(file)
+            }**\n` + mdFile;
           fs.writeFileSync(newPath, content);
           return newPath;
         } catch (error) {
@@ -190,8 +197,8 @@ export function activate(context: vscode.ExtensionContext) {
           const htmlContent = md.render(markdownContent);
 
           // Add a page-break before each new file content (except the first one)
-          combinedHtmlContent += `<div class="page-break"></div>`;
           combinedHtmlContent += htmlContent;
+          combinedHtmlContent += `<div class="page-break"></div>`;
         } catch (error) {
           vscode.window.showErrorMessage(`Failed to process ${file}: ${error}`);
         }
@@ -235,6 +242,13 @@ export function activate(context: vscode.ExtensionContext) {
 }
 export function deactivate() {}
 
+// Helper: check if a file or folder should be ignored
+function isIgnored(filePath: string): boolean {
+  return ignorePatterns.some((pattern) =>
+    minimatch(filePath, pattern, { matchBase: true })
+  );
+}
+
 // Helper function: Get all .md files recursively
 function getAllMarkdownFiles(dir: string): string[] {
   let results: string[] = [];
@@ -242,9 +256,14 @@ function getAllMarkdownFiles(dir: string): string[] {
 
   list.forEach((file) => {
     const fullPath = path.resolve(dir, file);
+
+    if (isIgnored(file)) {
+      return;
+    }
+
     const stat = fs.statSync(fullPath);
 
-    if (stat && stat.isDirectory() && path.basename(fullPath) !== 'print') {
+    if (stat && stat.isDirectory() && path.basename(fullPath) !== "print") {
       results = results.concat(getAllMarkdownFiles(fullPath));
     } else if (file.endsWith(".md")) {
       results.push(fullPath);
