@@ -27,7 +27,7 @@
     "configuration": {
       "title": "PrettyPrint",
       "properties": {
-        "myExtension.ignore": {
+        "prettyprintcode.ignore": {
           "type": "array",
           "items": {
             "type": "string"

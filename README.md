@@ -12,6 +12,7 @@ This is a Visual Studio Code extension that helps users process code and Markdow
 - **Line Numbers in Code**: Code blocks are automatically numbered for better readability when printed.
 - **LaTeX Support**: Uses Katex to render LaTeX expressions in Markdown.
 - **Print-Friendly HTML**: Converts Markdown to HTML with an automatic print trigger, allowing users to print the document directly from their browser.
+- **Ignore files that you don't want to print**: (`Ctrl+Shift+P`) and type `Preferences: Open User Settings`. Search for `prettyprintcode.ignore` and add your patterns to ignore.
 
 ## Installation
 

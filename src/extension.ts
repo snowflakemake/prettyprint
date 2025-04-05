@@ -11,6 +11,7 @@ const md = MarkdownIt();
 md.use(katex);
 md.use(prism, { plugins: ["line-numbers"] });
 
+// Get settings from the vscode workspace
 const config = vscode.workspace.getConfiguration("myExtension");
 const ignorePatterns = config.get<string[]>("ignore") || [];
 
@@ -104,7 +105,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       // Step 4: Convert each Markdown file to HTML
-      // Step 2: Initialize the HTML template with basic styles and structure
+      // Initialize the HTML template with basic styles and structure
       let combinedHtmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -187,7 +188,7 @@ export function activate(context: vscode.ExtensionContext) {
     <body>
     `;
 
-      // Step 3: Process each markdown file
+      // Process each markdown file
       for (const file of mdFiles) {
         try {
           // Read the markdown content
@@ -204,7 +205,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
       }
 
-      // Step 4: Close the HTML structure
+      // Close the HTML structure
       combinedHtmlContent += `</body></html>`;
       combinedHtmlContent =
         addManualLineNumbersToCodeBlocks(combinedHtmlContent);
@@ -318,6 +319,7 @@ function convertCodeToMarkdown(filePath: string) {
   }**\n\`\`\`${language}\n${codeContent}\n\`\`\``;
 }
 
+// Helper: Add line-numbers to all the codeblocks
 function addManualLineNumbersToCodeBlocks(html: string): string {
   // Load the HTML content into cheerio
   const $ = cheerio.load(html);
@@ -353,6 +355,7 @@ function addManualLineNumbersToCodeBlocks(html: string): string {
   return $.html();
 }
 
+// Helper: Add line breaks to long lines in code blocks. This to ensure the line numbering is aligned
 function addLineBreaksToLongLines(
   codeContent: string,
   maxLineLength = 65
