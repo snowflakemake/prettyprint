@@ -8,7 +8,7 @@
   },
   "license": "MIT",
   "description": "Combining vscode-print and markdown-to-pdf to print in the most efficient and pretty way",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.98.0"
   },
@@ -32,7 +32,9 @@
           "items": {
             "type": "string"
           },
-          "default": ["**/.git"],
+          "default": [
+            "**/.git"
+          ],
           "description": "Glob patterns for files and folders to ignore during print"
         }
       }
