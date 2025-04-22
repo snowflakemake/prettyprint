@@ -1,5 +1,7 @@
 # Pretty Print VS Code Extension
 
+![PrettyPrint icon, created with Canva AI](images/icon.png)
+
 This is a Visual Studio Code extension that helps users process code and Markdown files in a selected folder by converting them into a printable format. The extension:
 
 1. **Converts code files to Markdown**: Any supported code file (See Supported Languages) in the selected folder is converted to a Markdown file with syntax highlighting and line numbers.
@@ -30,6 +32,9 @@ Install the extension from Visual Studio Marketplace: [Pretty Print - Visual Stu
 4. **Generate HTML**: After converting the files to Markdown, the extension combines them into a single HTML file, which is saved in the same `print` folder.
 
 5. **Open & Print**: The HTML file will automatically open in your default web browser, where you can print the document.
+
+> [!TIP]
+> To edit settings please go to vscode user settings and search for `prettyprintcode`
 
 ## Key Functions
 

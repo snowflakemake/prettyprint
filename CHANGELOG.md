@@ -1,6 +1,10 @@
 # Change Log
 
-## v0.0.3
+## v0.x.x
+
+- Added an icon
+
+## v0.0.3 - 2025-04-22
 
 - Added support for jsx/tsx files. As issued by @jamesritzman [#1](https://github.com/snowflakemake/prettyprint/issues/1)
 - Added setting for setting font-size: As issued by @jamesritzman [#2](https://github.com/snowflakemake/prettyprint/issues/2)

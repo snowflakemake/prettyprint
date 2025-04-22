@@ -8,6 +8,7 @@
   },
   "license": "MIT",
   "description": "Combining vscode-print and markdown-to-pdf to print in the most efficient and pretty way",
+  "icon": "images/icon.png",
   "version": "0.0.3",
   "engines": {
     "vscode": "^1.98.0"
