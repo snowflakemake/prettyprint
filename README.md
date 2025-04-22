@@ -8,7 +8,6 @@ This is a Visual Studio Code extension that helps users process code and Markdow
 
 ## Features
 
-[!NOTE]
 [Change log](CHANGELOG.md)
 
 - **Supports multiple programming languages**: See Supported Languages for more information
