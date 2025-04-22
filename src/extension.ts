@@ -7,18 +7,21 @@ import katex from "markdown-it-katex";
 import prism from "markdown-it-prism";
 import { minimatch } from "minimatch";
 
-const md = MarkdownIt();
+const md = MarkdownIt({
+  html: false,
+});
 md.use(katex);
 md.use(prism, { plugins: ["line-numbers"] });
-
-// Get settings from the vscode workspace
-const config = vscode.workspace.getConfiguration("myExtension");
-const ignorePatterns = config.get<string[]>("ignore") || [];
 
 export function activate(context: vscode.ExtensionContext) {
   let command = vscode.commands.registerCommand(
     "extension.prettyPrint",
     async () => {
+      // Get settings from the vscode workspace
+      const config = vscode.workspace.getConfiguration("prettyprintcode");
+      const ignorePatterns = config.get<string[]>("ignore") || [];
+      const fontSize = config.get<number>("fontSize") || 16;
+
       // Step 1: Let the user select a folder
       const folderUri = await vscode.window.showOpenDialog({
         canSelectFiles: false,
@@ -43,7 +46,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Step 2: Get all code files recursively
       const codeFiles = getAllCodeFiles(folderPath);
-      let mdFiles = getAllMarkdownFiles(folderPath);
+      let mdFiles = getAllMarkdownFiles(folderPath, ignorePatterns);
 
       if (codeFiles.length === 0 && mdFiles.length === 0) {
         vscode.window.showWarningMessage("No code or markdown files found.");
@@ -86,7 +89,10 @@ export function activate(context: vscode.ExtensionContext) {
       for (const file of codeFiles) {
         try {
           let markdownContent = convertCodeToMarkdown(file);
-          markdownContent = addLineBreaksToLongLines(markdownContent);
+          markdownContent = addLineBreaksToLongLines(
+            markdownContent,
+            400 / (fontSize / 2)
+          );
           const markdownFileName =
             path.basename(file, path.extname(file)) + ".md";
           const markdownFilePath = path.resolve(
@@ -103,7 +109,6 @@ export function activate(context: vscode.ExtensionContext) {
           );
         }
       }
-
       // Step 4: Convert each Markdown file to HTML
       // Initialize the HTML template with basic styles and structure
       let combinedHtmlContent = `
@@ -125,6 +130,8 @@ export function activate(context: vscode.ExtensionContext) {
       <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-tsx.min.js"></script>
 
       <script>
         // Ensure Prism is activated after the page load
@@ -137,7 +144,7 @@ export function activate(context: vscode.ExtensionContext) {
       </script>
       <style>
         body {
-          font-size: 16px;
+          font-size: ${fontSize || 16}px;
           font-family: Helvetica, sans-serif;
           line-height: 1.6;
           max-width: 100%;
@@ -244,28 +251,28 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {}
 
 // Helper: check if a file or folder should be ignored
-function isIgnored(filePath: string): boolean {
+function isIgnored(filePath: string, ignorePatterns: string[]): boolean {
   return ignorePatterns.some((pattern) =>
     minimatch(filePath, pattern, { matchBase: true })
   );
 }
 
 // Helper function: Get all .md files recursively
-function getAllMarkdownFiles(dir: string): string[] {
+function getAllMarkdownFiles(dir: string, ignorePatterns: string[]): string[] {
   let results: string[] = [];
   const list = fs.readdirSync(dir);
 
   list.forEach((file) => {
     const fullPath = path.resolve(dir, file);
 
-    if (isIgnored(file)) {
+    if (isIgnored(file, ignorePatterns)) {
       return;
     }
 
     const stat = fs.statSync(fullPath);
 
     if (stat && stat.isDirectory() && path.basename(fullPath) !== "print") {
-      results = results.concat(getAllMarkdownFiles(fullPath));
+      results = results.concat(getAllMarkdownFiles(fullPath, ignorePatterns));
     } else if (file.endsWith(".md")) {
       results.push(fullPath);
     }
@@ -305,6 +312,9 @@ function isCodeFile(file: string): boolean {
     ".c",
     ".sh",
     ".rs",
+    ".jsx",
+    ".tsx",
+    ".json",
   ];
   return codeExtensions.includes(path.extname(file));
 }
@@ -316,7 +326,7 @@ function convertCodeToMarkdown(filePath: string) {
 
   return `\n**${
     path.basename(path.dirname(filePath)) + path.sep + path.basename(filePath)
-  }**\n\`\`\`${language}\n${codeContent}\n\`\`\``;
+  }**\n\`\`\`${language}\n${escapeHTML(codeContent)}\n\`\`\``;
 }
 
 // Helper: Add line-numbers to all the codeblocks
@@ -400,4 +410,8 @@ function addLineBreaksToLongLines(
 
   // Join the processed lines back into a single string
   return processedLines.join("\n");
+}
+
+function escapeHTML(str: string) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

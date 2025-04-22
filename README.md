@@ -8,6 +8,9 @@ This is a Visual Studio Code extension that helps users process code and Markdow
 
 ## Features
 
+[!NOTE]
+[Change log](CHANGELOG.md)
+
 - **Supports multiple programming languages**: See Supported Languages for more information
 - **Line Numbers in Code**: Code blocks are automatically numbered for better readability when printed.
 - **LaTeX Support**: Uses Katex to render LaTeX expressions in Markdown.
@@ -41,8 +44,8 @@ Install the extension from Visual Studio Marketplace: [Pretty Print - Visual Stu
 
 The extension supports the following languages for code syntax highlighting:
 
-- JavaScript (`.js`)
-- TypeScript (`.ts`)
+- JavaScript (`.js`, `.jsx`)
+- TypeScript (`.ts`, `.tsx`)
 - Python (`.py`)
 - C++ (`.cpp`)
 - Java (`.java`)
@@ -50,6 +53,7 @@ The extension supports the following languages for code syntax highlighting:
 - C (`.c`)
 - Rust (`.rs`)
 - Shell scripts (`.sh`)
+- JSON files (`.json`)
 
 ## Dependencies
 
