@@ -5,7 +5,7 @@ import MarkdownIt from "markdown-it";
 import * as cheerio from "cheerio";
 import katex from "markdown-it-katex";
 import prism from "markdown-it-prism";
-import { minimatch } from "minimatch";
+import * as minimatch from "minimatch";
 
 const md = MarkdownIt({
   html: false,
@@ -45,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
       const printFolderPath = path.resolve(normalizedFolderPath, "print");
 
       // Step 2: Get all code files recursively
-      const codeFiles = getAllCodeFiles(folderPath);
+      const codeFiles = getAllCodeFiles(folderPath, ignorePatterns);
       let mdFiles = getAllMarkdownFiles(folderPath, ignorePatterns);
 
       if (codeFiles.length === 0 && mdFiles.length === 0) {
@@ -251,9 +251,10 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {}
 
 // Helper: check if a file or folder should be ignored
-function isIgnored(filePath: string, ignorePatterns: string[]): boolean {
+function isIgnored(fullPath: string, ignorePatterns: string[]): boolean {
+  const normalizedPath = fullPath.replace(/\\/g, "/"); // <-- Normalize the path for Windows
   return ignorePatterns.some((pattern) =>
-    minimatch(filePath, pattern, { matchBase: true })
+    minimatch.minimatch(normalizedPath, pattern, { matchBase: true })
   );
 }
 
@@ -264,8 +265,7 @@ function getAllMarkdownFiles(dir: string, ignorePatterns: string[]): string[] {
 
   list.forEach((file) => {
     const fullPath = path.resolve(dir, file);
-
-    if (isIgnored(file, ignorePatterns)) {
+    if (isIgnored(fullPath, ignorePatterns)) {
       return;
     }
 
@@ -282,16 +282,19 @@ function getAllMarkdownFiles(dir: string, ignorePatterns: string[]): string[] {
 }
 
 // Helper: Get all code files (non-Markdown)
-function getAllCodeFiles(dir: string): string[] {
+function getAllCodeFiles(dir: string, ignorePatterns: string[]): string[] {
   let results: string[] = [];
   const list = fs.readdirSync(dir);
 
   list.forEach((file) => {
-    const fullPath = path.join(dir, file);
+    const fullPath = path.resolve(dir, file);
     const stat = fs.statSync(fullPath);
+    if (isIgnored(fullPath, ignorePatterns)) {
+      return;
+    }
 
     if (stat && stat.isDirectory()) {
-      results = results.concat(getAllCodeFiles(fullPath)); // Recurse into subdirectories
+      results = results.concat(getAllCodeFiles(fullPath, ignorePatterns)); // Recurse into subdirectories
     } else if (isCodeFile(file)) {
       results.push(fullPath); // Only add code files
     }
@@ -413,5 +416,5 @@ function addLineBreaksToLongLines(
 }
 
 function escapeHTML(str: string) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return new Option(str).innerHTML;
 }

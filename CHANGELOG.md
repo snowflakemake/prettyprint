@@ -3,6 +3,7 @@
 ## v0.x.x
 
 - Added an icon
+- Better html escaping in code blocks
 
 ## v0.0.3 - 2025-04-22
 

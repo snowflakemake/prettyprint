@@ -34,7 +34,8 @@
             "type": "string"
           },
           "default": [
-            "**/.git"
+            "**/.git**",
+            "**/print**"
           ],
           "description": "Glob patterns for files and folders to ignore during print"
         },
