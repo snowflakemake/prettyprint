@@ -70,7 +70,10 @@ export function activate(context: vscode.ExtensionContext) {
       mdFiles = mdFiles.map((file) => {
         try {
           let mdFile = fs.readFileSync(file, "utf-8");
-          const newPath = path.resolve(printFolderPath, path.basename(file));
+          const newPath = path.resolve(
+            printFolderPath,
+            path.dirname + "_" + path.basename(file)
+          );
           let content =
             `\n**${
               path.basename(path.dirname(file)) + path.sep + path.basename(file)
@@ -97,7 +100,7 @@ export function activate(context: vscode.ExtensionContext) {
             path.basename(file, path.extname(file)) + ".md";
           const markdownFilePath = path.resolve(
             printFolderPath,
-            markdownFileName
+            path.dirname + "_" + path.basename(file, path.extname(file)) + ".md"
           );
           fs.writeFileSync(markdownFilePath, markdownContent);
           if (!mdFiles.includes(markdownFilePath)) {
@@ -132,6 +135,7 @@ export function activate(context: vscode.ExtensionContext) {
       <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-tsx.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
 
       <script>
         // Ensure Prism is activated after the page load
@@ -318,6 +322,8 @@ function isCodeFile(file: string): boolean {
     ".jsx",
     ".tsx",
     ".json",
+    ".txt",
+    ".html",
   ];
   return codeExtensions.includes(path.extname(file));
 }
@@ -415,6 +421,11 @@ function addLineBreaksToLongLines(
   return processedLines.join("\n");
 }
 
-function escapeHTML(str: string) {
-  return new Option(str).innerHTML;
+function escapeHTML(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

@@ -1,0 +1,10 @@
+This project uses the following open source packages:
+
+- vscode (MIT License)
+- markdown-it (MIT License)
+- cheerio (MIT License)
+- markdown-it-katex (MIT License)
+- markdown-it-prism (MIT License)
+- minimatch (ISC License)
+
+Each package is subject to its respective license. Copies of these licenses are included in the 'LICENSES' folder.
