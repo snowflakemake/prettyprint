@@ -24,14 +24,14 @@ Install the extension from Visual Studio Marketplace: [Pretty Print - Visual Stu
 
 ## Usage
 
-1. **Activate the Extension**: Open the Command Palette (`Ctrl+Shift+P`) and type `Pretty Print`. Choose the `Pretty Print` command to activate it.
-2. **Select Folder**: You'll be prompted to select a folder containing code and Markdown files. The extension will process all code and Markdown files in the folder, including sub directories.
+1. **Activate the Extension**: Right click on a folder in the explorer tab and choose `Pretty Print`  
+***Alternatively***: Open the Command Palette (`Ctrl+Shift+P`) and type `Pretty Print`. Choose the `Pretty Print` command to activate it.  **Select Folder**: You'll be prompted to select a folder containing code and Markdown files. The extension will process all code and Markdown files in the folder, including sub directories.
 
-3. **Markdown Conversion**: The extension will convert code files to Markdown and place them in a new folder named `print` inside the selected folder.
+2. **Markdown Conversion**: The extension will convert code files to Markdown and place them in a new folder named `print` inside the selected folder.
 
-4. **Generate HTML**: After converting the files to Markdown, the extension combines them into a single HTML file, which is saved in the same `print` folder.
+3. **Generate HTML**: After converting the files to Markdown, the extension combines them into a single HTML file, which is saved in the same `print` folder.
 
-5. **Open & Print**: The HTML file will automatically open in your default web browser, where you can print the document.
+4. **Open & Print**: The HTML file will automatically open in your default web browser, where you can print the document.
 
 > [!TIP]
 > To edit settings please go to vscode user settings and search for `prettyprintcode`
@@ -46,18 +46,9 @@ Install the extension from Visual Studio Marketplace: [Pretty Print - Visual Stu
 
 ## Supported Languages
 
-The extension supports the following languages for code syntax highlighting:
+The extension now support all languages that PrismJS supports. See Ref for details:
 
-- JavaScript (`.js`, `.jsx`)
-- TypeScript (`.ts`, `.tsx`)
-- Python (`.py`)
-- C++ (`.cpp`)
-- Java (`.java`)
-- Go (`.go`)
-- C (`.c`)
-- Rust (`.rs`)
-- Shell scripts (`.sh`)
-- JSON files (`.json`)
+> [PrismJS Supported Languages](https://prismjs.com/#supported-languages)
 
 ## Dependencies
 
@@ -68,6 +59,7 @@ This extension uses the following libraries:
 - **`markdown-it-prism`**: A plugin for syntax highlighting in Markdown using Prism.
 - **`cheerio`**: A library for manipulating HTML.
 - **`open`**: Opens the generated HTML file in the default web browser.
+- **`minimatch`**: A library for matching file paths against glob patterns.
 
 ## Contribution
 

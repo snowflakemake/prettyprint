@@ -6,7 +6,10 @@ import * as cheerio from "cheerio";
 import katex from "markdown-it-katex";
 import prism from "markdown-it-prism";
 import * as minimatch from "minimatch";
+import { PrismAliasResolver } from "./prism-alias-resolver";
+import { get } from "http";
 
+const prismjs_version = "1.30.0";
 const md = MarkdownIt({
   html: false,
 });
@@ -16,26 +19,29 @@ md.use(prism, { plugins: ["line-numbers"] });
 export function activate(context: vscode.ExtensionContext) {
   let command = vscode.commands.registerCommand(
     "extension.prettyPrint",
-    async () => {
+    async (resource: vscode.Uri) => {
       // Get settings from the vscode workspace
       const config = vscode.workspace.getConfiguration("prettyprintcode");
       const ignorePatterns = config.get<string[]>("ignore") || [];
       const fontSize = config.get<number>("fontSize") || 16;
 
-      // Step 1: Let the user select a folder
-      const folderUri = await vscode.window.showOpenDialog({
-        canSelectFiles: false,
-        canSelectFolders: true,
-        canSelectMany: false,
-        openLabel: "Select Folder for Processing",
-      });
-
-      if (!folderUri || folderUri.length === 0) {
-        vscode.window.showErrorMessage("No folder selected.");
-        return;
+      // Check if the user has selected a folder
+      let folderUri: vscode.Uri | undefined = resource;
+      
+      if (!folderUri) {
+        // Let the user select a folder
+        const selectedFolder  = await vscode.window.showOpenDialog({
+          canSelectFiles: false,
+          canSelectFolders: true,
+          canSelectMany: false,
+          openLabel: "Select Folder for Processing",
+        });
+        if (selectedFolder && selectedFolder[0]) {
+          folderUri = selectedFolder[0];
+        }
       }
 
-      const folderPath = folderUri[0].fsPath;
+      const folderPath = folderUri?.fsPath || '';
       vscode.window.showInformationMessage(
         `Processing files in: ${folderPath}`
       );
@@ -44,7 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
       const normalizedFolderPath = path.normalize(folderPath);
       const printFolderPath = path.resolve(normalizedFolderPath, "print");
 
-      // Step 2: Get all code files recursively
+      // Get all code files recursively
       const codeFiles = getAllCodeFiles(folderPath, ignorePatterns);
       let mdFiles = getAllMarkdownFiles(folderPath, ignorePatterns);
 
@@ -72,7 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
           let mdFile = fs.readFileSync(file, "utf-8");
           const newPath = path.resolve(
             printFolderPath,
-            path.dirname + "_" + path.basename(file)
+            path.basename(path.dirname(file)).replaceAll('.','-') + "_" + path.basename(file)
           );
           let content =
             `\n**${
@@ -88,7 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
       });
 
-      // Step 3: Convert each code file to markdown
+      // Convert each code file to markdown
       for (const file of codeFiles) {
         try {
           let markdownContent = convertCodeToMarkdown(file);
@@ -100,8 +106,9 @@ export function activate(context: vscode.ExtensionContext) {
             path.basename(file, path.extname(file)) + ".md";
           const markdownFilePath = path.resolve(
             printFolderPath,
-            path.dirname + "_" + path.basename(file, path.extname(file)) + ".md"
+            path.basename(path.dirname(file)).replaceAll('.','-') + "_" + path.basename(file, path.extname(file)) + ".md"
           );
+          console.log(`Writing markdown file: ${markdownFilePath}`);
           fs.writeFileSync(markdownFilePath, markdownContent);
           if (!mdFiles.includes(markdownFilePath)) {
             mdFiles.push(markdownFilePath);
@@ -112,7 +119,9 @@ export function activate(context: vscode.ExtensionContext) {
           );
         }
       }
-      // Step 4: Convert each Markdown file to HTML
+
+      const prismjsComponentsPath = getPrismjsComponentsPath(mdFiles);
+      // Convert each Markdown file to HTML
       // Initialize the HTML template with basic styles and structure
       let combinedHtmlContent = `
     <!DOCTYPE html>
@@ -121,21 +130,9 @@ export function activate(context: vscode.ExtensionContext) {
       <meta charset="UTF-16">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Markdown Files</title>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-tsx.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/${prismjs_version}/themes/prism.min.css">
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/${prismjs_version}/prism.min.js"></script>
+      ${prismjsComponentsScriptTags(prismjsComponentsPath)}
 
       <script>
         // Ensure Prism is activated after the page load
@@ -200,6 +197,18 @@ export function activate(context: vscode.ExtensionContext) {
     `;
 
       // Process each markdown file
+      mdFiles.sort((a, b) => {
+        const aName = path.basename(a).toLowerCase();
+        const bName = path.basename(b).toLowerCase();
+      
+        const isAReadme = aName.includes('readme');
+        const isBReadme = bName.includes('readme');
+      
+        if (isAReadme && !isBReadme) {return -1;};
+        if (!isAReadme && isBReadme) {return 1;};
+        return 0;
+      });
+
       for (const file of mdFiles) {
         try {
           // Read the markdown content
@@ -223,7 +232,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       const outputPath = path.resolve(printFolderPath, "combined_output.html");
 
-      // Step 5: Write the combined HTML to the output file
+      // Write the combined HTML to the output file
       try {
         fs.writeFileSync(outputPath, combinedHtmlContent);
         vscode.window.showInformationMessage(
@@ -235,7 +244,7 @@ export function activate(context: vscode.ExtensionContext) {
         );
       }
 
-      // Step 6: Open the combined HTML file in the default web browser
+      // Open the combined HTML file in the default web browser
       try {
         const open = await import("open");
         open.default(outputPath, { wait: false });
@@ -249,6 +258,9 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       context.subscriptions.push(command);
+
+      // Clear the print folder after processing
+      cleanPrintFolder(printFolderPath);
     }
   );
 }
@@ -299,33 +311,14 @@ function getAllCodeFiles(dir: string, ignorePatterns: string[]): string[] {
 
     if (stat && stat.isDirectory()) {
       results = results.concat(getAllCodeFiles(fullPath, ignorePatterns)); // Recurse into subdirectories
-    } else if (isCodeFile(file)) {
+    } else if (file === "combined_output.html"  || file.endsWith(".md")) {
+      return; // Skip the combined output file and markdown files
+    } else {
       results.push(fullPath); // Only add code files
     }
   });
 
   return results;
-}
-
-// Helper: Check if a file is a source code file (not markdown)
-function isCodeFile(file: string): boolean {
-  const codeExtensions = [
-    ".js",
-    ".ts",
-    ".cpp",
-    ".py",
-    ".java",
-    ".go",
-    ".c",
-    ".sh",
-    ".rs",
-    ".jsx",
-    ".tsx",
-    ".json",
-    ".txt",
-    ".html",
-  ];
-  return codeExtensions.includes(path.extname(file));
 }
 
 // Helper: Convert code file content to markdown with code block and line numbers
@@ -428,4 +421,72 @@ function escapeHTML(str: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function getPrismjsComponentsPath(mdFiles: Array<string>): Array<string> {
+  const prismjsComponentsPath = `https://cdnjs.cloudflare.com/ajax/libs/prism/${prismjs_version}/components/`;
+  const resolver = new PrismAliasResolver();
+
+  let componentPaths: Array<string> = [];
+
+  getAllLanguages(mdFiles).forEach((lang: string) => {
+    const resolvedLang = resolver.resolveLanguage(lang);
+    if (resolvedLang) {
+      const componentPath = prismjsComponentsPath.concat(`prism-${resolvedLang}.min.js`);
+      console.log(`Adding component path: ${componentPath}`);
+      componentPaths.push(componentPath);
+    }
+  });
+  return componentPaths;
+}
+
+function getAllLanguages(mdFiles: Array<string>): Set<string> {
+  const CODE_BLOCK_REGEX = /```([a-zA-Z0-9_-]+)?[\s\S]*?```/g;
+  const codeBlockLangs = new Set<string>();
+
+  for (const file of mdFiles) {
+    const content = fs.readFileSync(file, "utf-8");
+    const matches = content.match(CODE_BLOCK_REGEX);
+    if (matches) {
+      for (const match of matches) {
+        const langMatch = match.match(/```([a-zA-Z0-9_-]+)/);
+        if (langMatch && langMatch[1]) {
+          codeBlockLangs.add(langMatch[1]);
+        }
+      }
+    }
+  }
+  return codeBlockLangs;
+}
+
+function prismjsComponentsScriptTags(prismjsComponentsPath: Array<string>): string {
+  return prismjsComponentsPath
+    .map((componentPath) => {
+      return `<script src="${componentPath}"></script>`;
+    })
+    .join("\n");
+}
+
+function cleanPrintFolder(printFolderPath: string) {
+  if (!fs.existsSync(printFolderPath)) {return;};
+
+  const files = fs.readdirSync(printFolderPath);
+
+  for (const file of files) {
+    if (file !== 'combined_output.html') {
+      const filePath = path.join(printFolderPath, file);
+      const stat = fs.statSync(filePath);
+
+      try {
+        if (stat.isDirectory()) {
+          fs.rmSync(filePath, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(filePath);
+        }
+        console.log(`Deleted: ${filePath}`);
+      } catch (error) {
+        console.error(`Failed to delete ${filePath}:`, error);
+      }
+    }
+  }
 }

@@ -1,8 +1,15 @@
 # Change Log
 
-## v0.x.x
+## v0.1.0 - 2025-04-30
 
+### Added
+
+- Added support for all languages supported by [PrismJS Supported Languages](https://prismjs.com/#supported-languages)
 - Added an icon
+- Added context menu entry on folders
+
+### Fixed
+
 - Better html escaping in code blocks
 
 ## v0.0.3 - 2025-04-22

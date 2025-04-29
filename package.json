@@ -9,7 +9,7 @@
   "license": "MIT",
   "description": "Combining vscode-print and markdown-to-pdf to print in the most efficient and pretty way",
   "icon": "images/icon.png",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.98.0"
   },
@@ -25,6 +25,16 @@
         "title": "Pretty Print"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "extension.prettyPrint",
+          "title": "Pretty Print",
+          "when": "explorerResourceIsFolder",
+          "group": "z_commands"
+        }
+      ]
+    },
     "configuration": {
       "title": "PrettyPrint",
       "properties": {
