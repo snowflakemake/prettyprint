@@ -2,7 +2,7 @@
 
 ![PrettyPrint icon, created with Canva AI](images/icon.png)
 
-This is a Visual Studio Code extension that helps users process code and Markdown files in a selected folder by converting them into a printable format. The extension:
+This is a Visual Studio Code extension that helps users process code and Markdown files in a selected file or folder by converting them into a printable format. The extension:
 
 1. **Converts code files to Markdown**: Any supported code file (See Supported Languages) in the selected folder is converted to a Markdown file with syntax highlighting and line numbers.
 2. **Converts Markdown files to HTML**: Markdown files are then converted to HTML, combining them into one file.
@@ -17,6 +17,7 @@ This is a Visual Studio Code extension that helps users process code and Markdow
 - **LaTeX Support**: Uses Katex to render LaTeX expressions in Markdown.
 - **Print-Friendly HTML**: Converts Markdown to HTML with an automatic print trigger, allowing users to print the document directly from their browser.
 - **Ignore files that you don't want to print**: (`Ctrl+Shift+P`) and type `Preferences: Open User Settings`. Search for `prettyprintcode.ignore` and add your patterns to ignore.
+- **Custom header & footer templates**: Adjust `prettyprintcode.documentHeader` / `prettyprintcode.documentFooter` to override the per-file header and footer. Placeholders such as `{{displayPath}}`, `{{relativePath}}`, `{{fileName}}`, and their `raw` variants are supported. Pair with `prettyprintcode.headerFooterStyles` to add bespoke CSS.
 
 ## Installation
 
@@ -24,10 +25,10 @@ Install the extension from Visual Studio Marketplace: [Pretty Print - Visual Stu
 
 ## Usage
 
-1. **Activate the Extension**: Right click on a folder in the explorer tab and choose `Pretty Print`  
-***Alternatively***: Open the Command Palette (`Ctrl+Shift+P`) and type `Pretty Print`. Choose the `Pretty Print` command to activate it.  **Select Folder**: You'll be prompted to select a folder containing code and Markdown files. The extension will process all code and Markdown files in the folder, including sub directories.
+1. **Activate the Extension**: Right click on a file or folder in the explorer and choose `Pretty Print`.  
+***Alternatively***: Open the Command Palette (`Ctrl+Shift+P`) and type `Pretty Print`. Choose the `Pretty Print` command to activate it. **Select File or Folder**: You'll be prompted to select what you want to print. The extension will process the selected file, or every code and Markdown file inside the chosen folder (including sub directories).
 
-2. **Markdown Conversion**: The extension will convert code files to Markdown and place them in a new folder named `print` inside the selected folder.
+2. **Markdown Conversion**: The extension converts code files to Markdown and places the generated files in a `print` folder next to your selection. When a folder is chosen, that folder gets the `print` directory. When a single file is chosen, the `print` directory is created alongside that file.
 
 3. **Generate HTML**: After converting the files to Markdown, the extension combines them into a single HTML file, which is saved in the same `print` folder.
 

@@ -16,7 +16,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:extension.prettyPrint"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -30,7 +32,6 @@
         {
           "command": "extension.prettyPrint",
           "title": "Pretty Print",
-          "when": "explorerResourceIsFolder",
           "group": "z_commands"
         }
       ]
@@ -53,6 +54,21 @@
           "type": "number",
           "default": 16,
           "description": "Font size to use on the print"
+        },
+        "prettyprintcode.documentHeader": {
+          "type": "string",
+          "default": "<p><strong>{{displayPath}}</strong></p>",
+          "markdownDescription": "HTML template rendered before each file's content. Placeholders: `{{displayPath}}`, `{{relativePath}}`, `{{fileName}}`, `{{parentDirectory}}` and their `raw` variants."
+        },
+        "prettyprintcode.documentFooter": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "HTML template rendered after each file's content. Supports the same placeholders as `prettyprintcode.documentHeader`."
+        },
+        "prettyprintcode.headerFooterStyles": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "CSS appended to the generated `<style>` tag. Useful for styling elements emitted by the document header/footer templates."
         }
       }
     }

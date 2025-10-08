@@ -1,5 +1,18 @@
 # Change Log
 
+## v0.2.0 - 2025-05-05
+
+### Added
+
+- Allow running Pretty Print on either a single file or an entire folder from the explorer or command palette
+- Added configurable header and footer templates with placeholder support so the generated pages can display custom metadata
+- Added the `prettyprintcode.headerFooterStyles` setting for injecting custom CSS that targets the header/footer templates
+
+### Changed
+
+- Default header template now mirrors the previous filename banner while remaining overrideable through settings
+- Explorer context menu command is now available for both files and folders
+
 ## v0.1.0 - 2025-04-30
 
 ### Added

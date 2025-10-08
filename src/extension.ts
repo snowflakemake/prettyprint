@@ -24,44 +24,98 @@ export function activate(context: vscode.ExtensionContext) {
       const config = vscode.workspace.getConfiguration("prettyprintcode");
       const ignorePatterns = config.get<string[]>("ignore") || [];
       const fontSize = config.get<number>("fontSize") || 16;
+      const headerTemplate =
+        config.get<string>("documentHeader") ??
+        "<p><strong>{{displayPath}}</strong></p>";
+      const footerTemplate = config.get<string>("documentFooter") ?? "";
+      const headerFooterStyles =
+        config.get<string>("headerFooterStyles") ?? "";
+      const headerTemplateHasContent = headerTemplate.trim().length > 0;
+      const footerTemplateHasContent = footerTemplate.trim().length > 0;
 
-      // Check if the user has selected a folder
-      let folderUri: vscode.Uri | undefined = resource;
-      
-      if (!folderUri) {
-        // Let the user select a folder
-        const selectedFolder  = await vscode.window.showOpenDialog({
-          canSelectFiles: false,
+      // Determine if the command was invoked from the explorer or command palette
+      let targetUri: vscode.Uri | undefined = resource;
+
+      if (!targetUri) {
+        // Let the user select a file or folder
+        const pickedEntries = await vscode.window.showOpenDialog({
+          canSelectFiles: true,
           canSelectFolders: true,
           canSelectMany: false,
-          openLabel: "Select Folder for Processing",
+          openLabel: "Select File or Folder for Processing",
         });
-        if (selectedFolder && selectedFolder[0]) {
-          folderUri = selectedFolder[0];
+
+        if (!pickedEntries || pickedEntries.length === 0) {
+          vscode.window.showErrorMessage("No file or folder selected.");
+          return;
+        }
+
+        targetUri = pickedEntries[0];
+      }
+
+      if (!targetUri) {
+        vscode.window.showErrorMessage("No file or folder selected.");
+        return;
+      }
+
+      const selectedPath = targetUri.fsPath;
+      const selectionStats = fs.existsSync(selectedPath)
+        ? fs.statSync(selectedPath)
+        : undefined;
+
+      if (!selectionStats) {
+        vscode.window.showErrorMessage(
+          "Unable to access the selected file or folder."
+        );
+        return;
+      }
+
+      const normalizedSelectedPath = path.normalize(selectedPath);
+      const targetRoot = selectionStats.isDirectory()
+        ? normalizedSelectedPath
+        : path.dirname(normalizedSelectedPath);
+
+      vscode.window.showInformationMessage(`Processing: ${selectedPath}`);
+
+      // Normalize the folder path to ensure consistency
+      const printFolderPath = path.resolve(targetRoot, "print");
+
+      let codeFiles: string[] = [];
+      let markdownFiles: string[] = [];
+
+      if (selectionStats.isDirectory()) {
+        // Get all files recursively when a folder is selected
+        codeFiles = getAllCodeFiles(selectedPath, ignorePatterns);
+        markdownFiles = getAllMarkdownFiles(selectedPath, ignorePatterns);
+      } else {
+        // Respect ignore patterns for single file selections
+        if (isIgnored(selectedPath, ignorePatterns)) {
+          vscode.window.showWarningMessage(
+            "Selected file is ignored by the current settings."
+          );
+          return;
+        }
+
+        if (isMarkdownFile(selectedPath)) {
+          markdownFiles = [selectedPath];
+        } else if (path.basename(selectedPath) === "combined_output.html") {
+          vscode.window.showWarningMessage(
+            "The generated combined_output.html file cannot be reprinted directly."
+          );
+          return;
+        } else {
+          codeFiles = [selectedPath];
         }
       }
 
-      const folderPath = folderUri?.fsPath || '';
-      vscode.window.showInformationMessage(
-        `Processing files in: ${folderPath}`
-      );
-
-      // Normalize the folder path to ensure consistency
-      const normalizedFolderPath = path.normalize(folderPath);
-      const printFolderPath = path.resolve(normalizedFolderPath, "print");
-
-      // Get all code files recursively
-      const codeFiles = getAllCodeFiles(folderPath, ignorePatterns);
-      let mdFiles = getAllMarkdownFiles(folderPath, ignorePatterns);
-
-      if (codeFiles.length === 0 && mdFiles.length === 0) {
+      if (codeFiles.length === 0 && markdownFiles.length === 0) {
         vscode.window.showWarningMessage("No code or markdown files found.");
         return;
       }
 
-      if (codeFiles.length === 0) {
+      if (codeFiles.length === 0 && selectionStats.isDirectory()) {
         vscode.window.showWarningMessage("No code files found.");
-      } else {
+      } else if (codeFiles.length > 0) {
         vscode.window.showInformationMessage(
           `Found ${codeFiles.length} code files. Converting to Markdown`
         );
@@ -73,18 +127,14 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       // Copy existing .md files to the print directory
-      mdFiles = mdFiles.map((file) => {
+      markdownFiles = markdownFiles.map((file) => {
         try {
           let mdFile = fs.readFileSync(file, "utf-8");
           const newPath = path.resolve(
             printFolderPath,
-            path.basename(path.dirname(file)).replaceAll('.','-') + "_" + path.basename(file)
+            getPrintFileName(file, path.extname(file))
           );
-          let content =
-            `\n**${
-              path.basename(path.dirname(file)) + path.sep + path.basename(file)
-            }**\n` + mdFile;
-          fs.writeFileSync(newPath, content);
+          fs.writeFileSync(newPath, mdFile);
           return newPath;
         } catch (error) {
           vscode.window.showErrorMessage(
@@ -102,16 +152,13 @@ export function activate(context: vscode.ExtensionContext) {
             markdownContent,
             400 / (fontSize / 2)
           );
-          const markdownFileName =
-            path.basename(file, path.extname(file)) + ".md";
           const markdownFilePath = path.resolve(
             printFolderPath,
-            path.basename(path.dirname(file)).replaceAll('.','-') + "_" + path.basename(file, path.extname(file)) + ".md"
+            getPrintFileName(file, ".md")
           );
-          console.log(`Writing markdown file: ${markdownFilePath}`);
           fs.writeFileSync(markdownFilePath, markdownContent);
-          if (!mdFiles.includes(markdownFilePath)) {
-            mdFiles.push(markdownFilePath);
+          if (!markdownFiles.includes(markdownFilePath)) {
+            markdownFiles.push(markdownFilePath);
           }
         } catch (error) {
           vscode.window.showErrorMessage(
@@ -120,7 +167,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
       }
 
-      const prismjsComponentsPath = getPrismjsComponentsPath(mdFiles);
+      const prismjsComponentsPath = getPrismjsComponentsPath(markdownFiles);
       // Convert each Markdown file to HTML
       // Initialize the HTML template with basic styles and structure
       let combinedHtmlContent = `
@@ -191,13 +238,14 @@ export function activate(context: vscode.ExtensionContext) {
           padding-right: 0.8em;
           text-align: right;
         }
+        ${headerFooterStyles}
       </style>
     </head>
     <body>
     `;
 
       // Process each markdown file
-      mdFiles.sort((a, b) => {
+      markdownFiles.sort((a, b) => {
         const aName = path.basename(a).toLowerCase();
         const bName = path.basename(b).toLowerCase();
       
@@ -209,13 +257,34 @@ export function activate(context: vscode.ExtensionContext) {
         return 0;
       });
 
-      for (const file of mdFiles) {
+      for (const file of markdownFiles) {
         try {
           // Read the markdown content
           const markdownContent = fs.readFileSync(file, "utf-8");
 
           // Convert the markdown content to HTML using markdown-it
-          const htmlContent = md.render(markdownContent);
+          let htmlContent = md.render(markdownContent);
+
+          const templateContext = buildTemplateContext(file, targetRoot);
+          if (headerTemplateHasContent) {
+            const resolvedHeader = renderTemplate(
+              headerTemplate,
+              templateContext
+            );
+            if (resolvedHeader.trim().length > 0) {
+              htmlContent = `${resolvedHeader}\n${htmlContent}`;
+            }
+          }
+
+          if (footerTemplateHasContent) {
+            const resolvedFooter = renderTemplate(
+              footerTemplate,
+              templateContext
+            );
+            if (resolvedFooter.trim().length > 0) {
+              htmlContent = `${htmlContent}\n${resolvedFooter}`;
+            }
+          }
 
           // Add a page-break before each new file content (except the first one)
           combinedHtmlContent += htmlContent;
@@ -226,7 +295,8 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       // Close the HTML structure
-      combinedHtmlContent += `</body></html>`;
+      combinedHtmlContent += `
+    </body></html>`;
       combinedHtmlContent =
         addManualLineNumbersToCodeBlocks(combinedHtmlContent);
 
@@ -289,7 +359,7 @@ function getAllMarkdownFiles(dir: string, ignorePatterns: string[]): string[] {
 
     if (stat && stat.isDirectory() && path.basename(fullPath) !== "print") {
       results = results.concat(getAllMarkdownFiles(fullPath, ignorePatterns));
-    } else if (file.endsWith(".md")) {
+    } else if (isMarkdownFile(fullPath)) {
       results.push(fullPath);
     }
   });
@@ -311,7 +381,10 @@ function getAllCodeFiles(dir: string, ignorePatterns: string[]): string[] {
 
     if (stat && stat.isDirectory()) {
       results = results.concat(getAllCodeFiles(fullPath, ignorePatterns)); // Recurse into subdirectories
-    } else if (file === "combined_output.html"  || file.endsWith(".md")) {
+    } else if (
+      file === "combined_output.html" ||
+      isMarkdownFile(fullPath)
+    ) {
       return; // Skip the combined output file and markdown files
     } else {
       results.push(fullPath); // Only add code files
@@ -321,14 +394,73 @@ function getAllCodeFiles(dir: string, ignorePatterns: string[]): string[] {
   return results;
 }
 
+function buildTemplateContext(
+  filePath: string,
+  rootPath: string
+): Record<string, string> {
+  const fileName = path.basename(filePath);
+  const parentDirectory = path.basename(path.dirname(filePath));
+  const relativePathRaw = path.relative(rootPath, filePath) || fileName;
+  const normalizedRelativePath =
+    relativePathRaw === "" ? fileName : relativePathRaw.replace(/\\/g, "/");
+  const displayPath = getDisplayPath(filePath);
+
+  return {
+    fileName: escapeHTML(fileName),
+    filePath: escapeHTML(filePath),
+    parentDirectory: escapeHTML(parentDirectory),
+    relativePath: escapeHTML(normalizedRelativePath),
+    displayPath: escapeHTML(displayPath),
+    rawFileName: fileName,
+    rawFilePath: filePath,
+    rawParentDirectory: parentDirectory,
+    rawRelativePath: normalizedRelativePath,
+    rawDisplayPath: displayPath,
+  };
+}
+
+function getDisplayPath(filePath: string): string {
+  return (
+    path.basename(path.dirname(filePath)) +
+    path.sep +
+    path.basename(filePath)
+  );
+}
+
+function renderTemplate(
+  template: string,
+  context: Record<string, string>
+): string {
+  return template.replace(/{{\s*([\w]+)\s*}}/g, (_, key) => {
+    if (Object.prototype.hasOwnProperty.call(context, key)) {
+      return context[key];
+    }
+    return "";
+  });
+}
+
+// Helper: Check if a file is a markdown file
+function isMarkdownFile(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === ".md";
+}
+
+// Helper: Generate a predictable filename inside the print directory
+function getPrintFileName(filePath: string, targetExtension: string): string {
+  const parent = path.basename(path.dirname(filePath)).replaceAll(".", "-");
+  const baseName =
+    path.basename(filePath, path.extname(filePath)) + targetExtension;
+
+  return parent ? `${parent}_${baseName}` : baseName;
+}
+
 // Helper: Convert code file content to markdown with code block and line numbers
 function convertCodeToMarkdown(filePath: string) {
   const codeContent = fs.readFileSync(filePath, "utf-8");
   const language = path.extname(filePath).slice(1); // e.g., "js", "ts", "cpp"
 
-  return `\n**${
-    path.basename(path.dirname(filePath)) + path.sep + path.basename(filePath)
-  }**\n\`\`\`${language}\n${escapeHTML(codeContent)}\n\`\`\``;
+  const safeLanguage = language || "plaintext";
+
+  return `\n\`\`\`${safeLanguage}\n${escapeHTML(codeContent)}\n\`\`\``;
 }
 
 // Helper: Add line-numbers to all the codeblocks
