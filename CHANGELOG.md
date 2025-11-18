@@ -1,5 +1,17 @@
 # Change Log
 
+## Unreleased
+
+- No unreleased changes.
+
+## v0.2.1 - 2025-11-18
+
+### Added
+
+- Added Obsidian-style embedded image support; `![[imagename.extension]]` references are resolved from the `./attachment` subdirectory located alongside the Markdown file.
+- Added the `prettyprintcode.codeThemePreset` quick-pick setting (plus the optional `prettyprintcode.codeThemeCustomUrl` override) so users can either choose from curated Prism themes or supply their own CSS.
+- Added the `prettyprintcode.showLineNumbers` toggle so code block numbering can be turned on or off per user preference.
+
 ## v0.2.0 - 2025-10-08
 
 ### Added

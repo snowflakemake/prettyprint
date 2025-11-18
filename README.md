@@ -13,11 +13,13 @@ This is a Visual Studio Code extension that helps users process code and Markdow
 [Change log](CHANGELOG.md)
 
 - **Supports multiple programming languages**: See Supported Languages for more information
-- **Line Numbers in Code**: Code blocks are automatically numbered for better readability when printed.
+- **Line Numbers in Code**: Toggle `prettyprintcode.showLineNumbers` to add or remove the manual code block numbering in the printout.
 - **LaTeX Support**: Uses Katex to render LaTeX expressions in Markdown.
 - **Print-Friendly HTML**: Converts Markdown to HTML with an automatic print trigger, allowing users to print the document directly from their browser.
+- **Obsidian-style embeds**: Image references like `![[diagram.png]]` automatically resolve from the `./attachment` folder beside the Markdown file, mirroring Obsidian vault behavior.
 - **Ignore files that you don't want to print**: (`Ctrl+Shift+P`) and type `Preferences: Open User Settings`. Search for `prettyprintcode.ignore` and add your patterns to ignore.
 - **Custom header & footer templates**: Adjust `prettyprintcode.documentHeader` / `prettyprintcode.documentFooter` to override the per-file header and footer. Placeholders such as `{{displayPath}}`, `{{relativePath}}`, `{{fileName}}`, and their `raw` variants are supported. Pair with `prettyprintcode.headerFooterStyles` to add bespoke CSS.
+- **Selectable code themes**: Pick from built-in Prism themes via `prettyprintcode.codeThemePreset`, or point to your own CSS with `prettyprintcode.codeThemeCustomUrl` (the legacy `codeTheme` setting still works for backward compatibility).
 
 ## Installation
 

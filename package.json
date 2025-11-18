@@ -9,7 +9,7 @@
   "license": "MIT",
   "description": "Combining vscode-print and markdown-to-pdf to print in the most efficient and pretty way",
   "icon": "images/icon.png",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "engines": {
     "vscode": "^1.98.0"
   },
@@ -17,7 +17,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:extension.prettyPrint"
+    "onCommand:extension.prettyPrint",
+    "onCommand:extensions.prettyPrint"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -55,6 +56,11 @@
           "default": 16,
           "description": "Font size to use on the print"
         },
+        "prettyprintcode.showLineNumbers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show manual line numbers alongside rendered code blocks."
+        },
         "prettyprintcode.documentHeader": {
           "type": "string",
           "default": "<p><strong>{{displayPath}}</strong></p>",
@@ -69,6 +75,42 @@
           "type": "string",
           "default": "",
           "markdownDescription": "CSS appended to the generated `<style>` tag. Useful for styling elements emitted by the document header/footer templates."
+        },
+        "prettyprintcode.codeThemePreset": {
+          "type": "string",
+          "enum": [
+            "prism",
+            "prism-coy",
+            "prism-dark",
+            "prism-funky",
+            "prism-okaidia",
+            "prism-solarizedlight",
+            "prism-tomorrow",
+            "prism-twilight"
+          ],
+          "enumDescriptions": [
+            "Default light theme",
+            "Coy light theme",
+            "Dark theme",
+            "Playful funky theme",
+            "Okaidia dark theme",
+            "Solarized light theme",
+            "Tomorrow night theme",
+            "Twilight dark theme"
+          ],
+          "default": "prism",
+          "markdownDescription": "Select one of the built-in Prism themes for styling code blocks."
+        },
+        "prettyprintcode.codeThemeCustomUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Optional `https://` URL to a custom Prism CSS file. When set, overrides the preset selection."
+        },
+        "prettyprintcode.codeTheme": {
+          "type": "string",
+          "default": "prism",
+          "markdownDescription": "Prism theme name (for example `prism`, `prism-tomorrow`, `prism-okaidia`) or a full `https://` URL to a custom Prism CSS file.",
+          "deprecationMessage": "Use `prettyprintcode.codeThemePreset` and/or `prettyprintcode.codeThemeCustomUrl` instead."
         }
       }
     }

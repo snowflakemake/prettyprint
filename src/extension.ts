@@ -10,16 +10,44 @@ import { PrismAliasResolver } from "./prism-alias-resolver";
 import { get } from "http";
 
 const prismjs_version = "1.30.0";
-const md = MarkdownIt({
-  html: false,
-});
-md.use(katex);
-md.use(prism, { plugins: ["line-numbers"] });
+
+interface PrettyPrintMarkdownEnv {
+  prettyPrintBaseDir?: string;
+}
+
+function createMarkdownRenderer(
+  enableLineNumbers: boolean
+): MarkdownIt {
+  const md = MarkdownIt({
+    html: false,
+  });
+  md.use(katex);
+  if (enableLineNumbers) {
+    md.use(prism, { plugins: ["line-numbers"] });
+  } else {
+    md.use(prism);
+  }
+
+  md.renderer.rules.image = (tokens, idx, options, env, self) => {
+    const baseDir =
+      (env as PrettyPrintMarkdownEnv | undefined)?.prettyPrintBaseDir;
+    if (baseDir) {
+      const token = tokens[idx];
+      const src = token.attrGet("src");
+      const inlinedSrc = convertImageSourceToDataUri(src, baseDir);
+      if (inlinedSrc) {
+        token.attrSet("src", inlinedSrc);
+      }
+    }
+
+    return self.renderToken(tokens, idx, options);
+  };
+
+  return md;
+}
 
 export function activate(context: vscode.ExtensionContext) {
-  let command = vscode.commands.registerCommand(
-    "extension.prettyPrint",
-    async (resource: vscode.Uri) => {
+  const prettyPrint = async (resource?: vscode.Uri) => {
       // Get settings from the vscode workspace
       const config = vscode.workspace.getConfiguration("prettyprintcode");
       const ignorePatterns = config.get<string[]>("ignore") || [];
@@ -30,6 +58,49 @@ export function activate(context: vscode.ExtensionContext) {
       const footerTemplate = config.get<string>("documentFooter") ?? "";
       const headerFooterStyles =
         config.get<string>("headerFooterStyles") ?? "";
+      const codeThemePreset =
+        config.get<string>("codeThemePreset") ??
+        config.get<string>("codeTheme") ??
+        "prism";
+      const customCodeThemeUrl =
+        config.get<string>("codeThemeCustomUrl")?.trim() || undefined;
+      const prismThemeStylesheet = getPrismThemeStylesheet(
+        codeThemePreset,
+        customCodeThemeUrl
+      );
+      const showLineNumbers =
+        config.get<boolean>("showLineNumbers") ?? true;
+      const md = createMarkdownRenderer(showLineNumbers);
+      const lineNumberStyles = showLineNumbers
+        ? `
+        .line-numbers-container {
+          display: flex;
+          align-items: flex-start;
+          margin: -10px 0px -30px 0px;
+        }
+
+        /* Line number styles */
+        .line-numbers-rows {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          margin-right: 10px;
+          font-family: monospace;
+          color: #999;
+          user-select: none;
+          margin-right: 1em;
+          white-space: nowrap;
+          border-right: #bbb 1px solid;
+        }
+
+        /* Each line number */
+        .line-number {
+          display: block;
+          padding-right: 0.8em;
+          text-align: right;
+        }
+        `
+        : "";
       const headerTemplateHasContent = headerTemplate.trim().length > 0;
       const footerTemplateHasContent = footerTemplate.trim().length > 0;
 
@@ -82,6 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       let codeFiles: string[] = [];
       let markdownFiles: string[] = [];
+      const markdownSourceDirectories = new Map<string, string>();
 
       if (selectionStats.isDirectory()) {
         // Get all files recursively when a folder is selected
@@ -135,6 +207,7 @@ export function activate(context: vscode.ExtensionContext) {
             getPrintFileName(file, path.extname(file))
           );
           fs.writeFileSync(newPath, mdFile);
+          markdownSourceDirectories.set(newPath, path.dirname(file));
           return newPath;
         } catch (error) {
           vscode.window.showErrorMessage(
@@ -157,6 +230,7 @@ export function activate(context: vscode.ExtensionContext) {
             getPrintFileName(file, ".md")
           );
           fs.writeFileSync(markdownFilePath, markdownContent);
+          markdownSourceDirectories.set(markdownFilePath, path.dirname(file));
           if (!markdownFiles.includes(markdownFilePath)) {
             markdownFiles.push(markdownFilePath);
           }
@@ -177,7 +251,7 @@ export function activate(context: vscode.ExtensionContext) {
       <meta charset="UTF-16">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Markdown Files</title>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/${prismjs_version}/themes/prism.min.css">
+      <link rel="stylesheet" href="${prismThemeStylesheet}">
       <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/${prismjs_version}/prism.min.js"></script>
       ${prismjsComponentsScriptTags(prismjsComponentsPath)}
 
@@ -212,32 +286,7 @@ export function activate(context: vscode.ExtensionContext) {
             overflow: auto;
             word-break: break-word;
         }
-        .line-numbers-container {
-          display: flex;
-          align-items: flex-start;
-          margin: -10px 0px -30px 0px;
-        }
-
-        /* Line number styles */
-        .line-numbers-rows {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          margin-right: 10px; /* Space between numbers and code */
-          font-family: monospace;
-          color: #999;
-          user-select: none;
-          margin-right: 1em;
-          white-space: nowrap;
-          border-right: #bbb 1px solid;
-        }
-
-        /* Each line number */
-        .line-number {
-          display: block;
-          padding-right: 0.8em;
-          text-align: right;
-        }
+        ${lineNumberStyles}
         ${headerFooterStyles}
       </style>
     </head>
@@ -261,9 +310,18 @@ export function activate(context: vscode.ExtensionContext) {
         try {
           // Read the markdown content
           const markdownContent = fs.readFileSync(file, "utf-8");
+          const markdownDir =
+            markdownSourceDirectories.get(file) ?? path.dirname(file);
+          const normalizedMarkdown = replaceObsidianImageLinks(
+            markdownContent,
+            markdownDir
+          );
 
           // Convert the markdown content to HTML using markdown-it
-          let htmlContent = md.render(markdownContent);
+          const renderEnv: PrettyPrintMarkdownEnv = {
+            prettyPrintBaseDir: markdownDir,
+          };
+          let htmlContent = md.render(normalizedMarkdown, renderEnv);
 
           const templateContext = buildTemplateContext(file, targetRoot);
           if (headerTemplateHasContent) {
@@ -297,8 +355,10 @@ export function activate(context: vscode.ExtensionContext) {
       // Close the HTML structure
       combinedHtmlContent += `
     </body></html>`;
-      combinedHtmlContent =
-        addManualLineNumbersToCodeBlocks(combinedHtmlContent);
+      if (showLineNumbers) {
+        combinedHtmlContent =
+          addManualLineNumbersToCodeBlocks(combinedHtmlContent);
+      }
 
       const outputPath = path.resolve(printFolderPath, "combined_output.html");
 
@@ -327,12 +387,15 @@ export function activate(context: vscode.ExtensionContext) {
         );
       }
 
-      context.subscriptions.push(command);
-
       // Clear the print folder after processing
       cleanPrintFolder(printFolderPath);
-    }
-  );
+    };
+
+  const commandIds = ["extension.prettyPrint", "extensions.prettyPrint"];
+  for (const commandId of commandIds) {
+    const disposable = vscode.commands.registerCommand(commandId, prettyPrint);
+    context.subscriptions.push(disposable);
+  }
 }
 export function deactivate() {}
 
@@ -597,6 +660,162 @@ function prismjsComponentsScriptTags(prismjsComponentsPath: Array<string>): stri
       return `<script src="${componentPath}"></script>`;
     })
     .join("\n");
+}
+
+function replaceObsidianImageLinks(
+  markdownContent: string,
+  markdownDir: string
+): string {
+  const OBSIDIAN_IMAGE_REGEX = /!\[\[([^[\]]+)\]\]/g;
+
+  return markdownContent.replace(OBSIDIAN_IMAGE_REGEX, (match, inner) => {
+    const [target] = inner.split("|");
+    const trimmedTarget = target?.trim();
+
+    if (!trimmedTarget) {
+      return match;
+    }
+
+    if (!getImageMimeType(trimmedTarget)) {
+      return match;
+    }
+
+    const resolvedPath = resolveObsidianImagePath(trimmedTarget, markdownDir);
+    if (!resolvedPath) {
+      return match;
+    }
+
+    const altText = path.basename(trimmedTarget);
+    const normalizedPath = resolvedPath.replace(/\\/g, "/");
+    return `![${altText}](<${normalizedPath}>)`;
+  });
+}
+
+function resolveObsidianImagePath(
+  requestedPath: string,
+  markdownDir: string
+): string | undefined {
+  const normalizedRequestedPath = requestedPath.replace(/\\/g, "/");
+  const candidatePaths: string[] = [];
+
+  if (path.isAbsolute(normalizedRequestedPath)) {
+    candidatePaths.push(normalizedRequestedPath);
+  } else {
+    candidatePaths.push(path.resolve(markdownDir, normalizedRequestedPath));
+    candidatePaths.push(
+      path.resolve(markdownDir, "attachments", normalizedRequestedPath)
+    );
+  }
+
+  for (const candidate of candidatePaths) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
+function convertImageSourceToDataUri(
+  src: string | null,
+  baseDir: string
+): string | undefined {
+  if (!src) {
+    return undefined;
+  }
+
+  let cleanedSource = src.trim();
+  if (!cleanedSource) {
+    return undefined;
+  }
+
+  if (cleanedSource.startsWith("data:") || /^[a-z]+:\/\//i.test(cleanedSource)) {
+    return undefined; // Already inline or remote resource
+  }
+
+  if (cleanedSource.startsWith("<") && cleanedSource.endsWith(">")) {
+    cleanedSource = cleanedSource.slice(1, -1);
+  }
+
+  const sanitizedSource = cleanedSource.replace(/[?#].*$/, "");
+  let resolvedPath = sanitizedSource;
+
+  if (!path.isAbsolute(resolvedPath)) {
+    resolvedPath = path.resolve(baseDir, resolvedPath);
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
+    return undefined;
+  }
+
+  const stat = fs.statSync(resolvedPath);
+  if (!stat.isFile()) {
+    return undefined;
+  }
+
+  const mimeType = getImageMimeType(resolvedPath);
+  if (!mimeType) {
+    return undefined;
+  }
+
+  try {
+    const buffer = fs.readFileSync(resolvedPath);
+    const base64 = buffer.toString("base64");
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    console.error(`Failed to inline image at ${resolvedPath}:`, error);
+    return undefined;
+  }
+}
+
+function getImageMimeType(filePath: string): string | undefined {
+  const extension = path.extname(filePath).toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    ".apng": "image/apng",
+    ".avif": "image/avif",
+    ".bmp": "image/bmp",
+    ".gif": "image/gif",
+    ".ico": "image/x-icon",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+    ".webp": "image/webp",
+  };
+
+  return mimeTypes[extension];
+}
+
+function getPrismThemeStylesheet(
+  themePreset?: string,
+  customThemeUrl?: string
+): string {
+  const defaultTheme = `https://cdnjs.cloudflare.com/ajax/libs/prism/${prismjs_version}/themes/prism.min.css`;
+
+  if (customThemeUrl) {
+    const trimmedCustom = customThemeUrl.trim();
+    if (/^https?:\/\//i.test(trimmedCustom)) {
+      return trimmedCustom;
+    }
+  }
+
+  if (!themePreset) {
+    return defaultTheme;
+  }
+
+  const trimmed = themePreset.trim();
+  if (!trimmed) {
+    return defaultTheme;
+  }
+
+  const sanitized = trimmed.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  if (!sanitized) {
+    return defaultTheme;
+  }
+
+  return `https://cdnjs.cloudflare.com/ajax/libs/prism/${prismjs_version}/themes/${sanitized}.min.css`;
 }
 
 function cleanPrintFolder(printFolderPath: string) {
