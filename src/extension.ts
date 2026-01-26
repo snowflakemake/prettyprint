@@ -391,10 +391,11 @@ export function activate(context: vscode.ExtensionContext) {
       cleanPrintFolder(printFolderPath);
     };
 
-  const commandIds = ["extension.prettyPrint", "extensions.prettyPrint"];
+  const commandIds = ['extension.prettyPrint'];
   for (const commandId of commandIds) {
     const disposable = vscode.commands.registerCommand(commandId, prettyPrint);
     context.subscriptions.push(disposable);
+    console.log(commandId, 'activated!');
   }
 }
 export function deactivate() {}

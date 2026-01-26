@@ -4,6 +4,14 @@
 
 - No unreleased changes.
 
+## v0.2.2 - 2026-01-26
+
+### Added
+- Included minimatch library to deps
+
+### Removed
+- Removed unnessesary command inclusion `extensions.prettyPrint`
+
 ## v0.2.1 - 2025-11-18
 
 ### Added

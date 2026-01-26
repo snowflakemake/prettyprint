@@ -9,16 +9,12 @@
   "license": "MIT",
   "description": "Combining vscode-print and markdown-to-pdf to print in the most efficient and pretty way",
   "icon": "images/icon.png",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "engines": {
     "vscode": "^1.98.0"
   },
   "categories": [
     "Other"
-  ],
-  "activationEvents": [
-    "onCommand:extension.prettyPrint",
-    "onCommand:extensions.prettyPrint"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -116,12 +112,14 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run check:runtime-deps && npm run compile",
+    "check:runtime-deps": "node scripts/check-runtime-deps.js",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",
@@ -141,6 +139,7 @@
     "markdown-it": "^14.1.0",
     "markdown-it-katex": "^2.0.3",
     "markdown-it-prism": "^3.0.0",
+    "minimatch": "^9.0.5",
     "open": "^10.1.0"
   }
 }
